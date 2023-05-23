@@ -9,7 +9,8 @@ from speech import ts
 warnings.filterwarnings("ignore")
 
 ser = serial.Serial("/dev/ttyUSB0", 9600)
-BASE_ORIGIN = 'https://2fe2-116-103-17-170.ngrok-free.app'
+ser.reset_input_buffer()
+BASE_ORIGIN = 'https://2e85-2402-800-6294-3859-ec72-c966-1c4d-7c60.ngrok-free.app'
 DETECTION_URL = f'{BASE_ORIGIN}/api/v1/object-to-json'
 # Khởi tạo camera
 camera = cv2.VideoCapture(0)
@@ -17,13 +18,27 @@ camera = cv2.VideoCapture(0)
 camera.set(3, 640) # set chiều rộng khung hình
 camera.set(4, 640) # set chiều cao khung hình
 
+state = None
+while state != 'Start':
+    state = input("Nhap 'Start' de bat dau!\n")
+
+ser.write(state.encode())
+
+while True:
+    if  ser.inWaiting()>0: 
+        data = ser.readline().decode("utf-8").strip()
+        if data == "Started":
+            break 
+        print(data)
+    print("123")
+    time.sleep(1)
+
 try:
     ser.reset_input_buffer()
     while True:
         if  ser.inWaiting()>0: 
             data = ser.readline()
         else:
-            print("continue")
             continue
         data = data.decode("utf-8").strip()
         print(data)
@@ -43,7 +58,6 @@ try:
             try:
                 response = requests.post(DETECTION_URL, files={'file': image_data}).json()
                 # result detection
-                print(response)
                 res_detect = set()
                 for result in response:
                     xmin = int(result['xmin'])
@@ -78,16 +92,19 @@ try:
                     text += f'{item}, '
             else:
                 text += "Vải không xuất hiện lỗi!"
-            ts.Read(text)
+
             # save result
             print("step 3")
             cv2.imwrite("result.jpg", image)
             pprint.pprint(response)
-
-            # send data arduino
+            
+            ts.Read(text)
+            time.sleep(1)
             print("step 4")
+            # send data arduino
             send_data = "B"
             ser.write(send_data.encode())
+
             time.sleep(2)
 except KeyboardInterrupt:
     ser.close()
