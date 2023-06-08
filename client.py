@@ -5,23 +5,27 @@ import requests
 import pprint
 import warnings
 from speech import ts
-
+import base64
+from io import BytesIO
+from PIL import Image
 warnings.filterwarnings("ignore")
 
 ser = serial.Serial("/dev/ttyUSB0", 9600)
 ser.reset_input_buffer()
 BASE_ORIGIN = 'http://34.143.164.207:8000/'
-DETECTION_URL = f'{BASE_ORIGIN}api/v1/object-to-json'
+BASE_ORIGIN = 'https://5902-2402-800-6294-3859-5d99-a7bc-54e3-626f.ngrok-free.app/'
+DETECTION_URL = f'{BASE_ORIGIN}api/v1/instance-segmentation/client'
 # Khởi tạo camera
 camera = cv2.VideoCapture(0)
 # Thiết lập kích thước khung hình của camera
 camera.set(3, 640) # set chiều rộng khung hình
 camera.set(4, 640) # set chiều cao khung hình
-
+ts.Read("Chào mừng bạn đến với hệ thống nhận diện lỗi dệt may!")
 state = None
 while state != 'Start':
     state = input("Nhap 'Start' de bat dau!\n")
 
+defects = ['Hole', 'Knot', 'Line', 'Stain']
 ser.write(state.encode())
 
 while True:
@@ -55,29 +59,21 @@ try:
 
             # call api to detect
             print("step 2")
+            res_detect = set()
             try:
-                response = requests.post(DETECTION_URL, files={'file': image_data}).json()
+                response = requests.post(DETECTION_URL, files={'file': image_data})
                 # result detection
-                res_detect = set()
-                for result in response:
-                    xmin = int(result['xmin'])
-                    ymin = int(result['ymin'])
-                    xmax = int(result['xmax'])
-                    ymax = int(result['ymax'])
-                    label = str(round(result['confidence'] * 100)) + '% ' + result['name']
-                    res_detect.add(result['name'])
-                    color = (0, 255, 0) # màu xanh lá cây
-                    thickness = 2
-                    cv2.rectangle(image, (xmin, ymin), (xmax, ymax), color, thickness)
-
-                    # css
-                    font = cv2.FONT_HERSHEY_SIMPLEX
-                    font_scale = 0.5 # tỷ lệ kích thước của chữ
-                    text_color = (0, 255, 0) # màu xanh lá cây
-                    text_thickness = 2 # độ dày của chữ
-                    text_size, _ = cv2.getTextSize(label, font, font_scale, text_thickness)
-
-                    cv2.putText(image, label, (xmin, ymin - text_size[1]), font, font_scale, text_color, text_thickness)
+                if response.status_code == 200:
+                    data = response.json()
+                    detections = data["detections"]
+                    base64_image = data["image"]
+                    image_data = base64.b64decode(base64_image)
+                    image = Image.open(BytesIO(image_data))
+                    save_path = "images/response.jpg"
+                    image.save(save_path)
+                    pprint.pprint(detections)
+                    for result in detections:
+                        res_detect.add(defects[int(result['class_id'])])
             except Exception as e:
                 print(str(e))
                 send_data = "B"
@@ -87,17 +83,11 @@ try:
             # read result
             text = "Kết quả kiểm tra:"
             if len(res_detect):
-                text += " Xuất hiện lỗi"
+                text += "Xuất hiện lỗi "
                 for item in res_detect:
                     text += f'{item}, '
             else:
                 text += "Vải không xuất hiện lỗi!"
-
-            # save result
-            print("step 3")
-            cv2.imwrite("result.jpg", image)
-            pprint.pprint(response)
-            
             ts.Read(text)
             time.sleep(1)
             print("step 4")
