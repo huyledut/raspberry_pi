@@ -4,7 +4,7 @@ import time
 import requests
 import pprint
 import warnings
-from speech import ts
+from speech2 import ts
 
 warnings.filterwarnings("ignore")
 

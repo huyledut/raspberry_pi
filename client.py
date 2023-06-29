@@ -8,19 +8,21 @@ from speech import ts
 import base64
 from io import BytesIO
 from PIL import Image
+from tool import Read
 warnings.filterwarnings("ignore")
 
 ser = serial.Serial("/dev/ttyUSB0", 9600)
 ser.reset_input_buffer()
-BASE_ORIGIN = 'http://34.143.164.207:8000/'
-BASE_ORIGIN = 'https://5902-2402-800-6294-3859-5d99-a7bc-54e3-626f.ngrok-free.app/'
-DETECTION_URL = f'{BASE_ORIGIN}api/v1/instance-segmentation/client'
+BASE_ORIGIN = 'http://34.126.134.54:8000'
+# BASE_ORIGIN = 'https://c82d-2402-800-6294-3859-4896-a912-7627-a253.ngrok-free.app'
+DETECTION_URL = f'{BASE_ORIGIN}/api/v1/instance-segmentation/client'
 # Khởi tạo camera
 camera = cv2.VideoCapture(0)
 # Thiết lập kích thước khung hình của camera
 camera.set(3, 640) # set chiều rộng khung hình
 camera.set(4, 640) # set chiều cao khung hình
-ts.Read("Chào mừng bạn đến với hệ thống nhận diện lỗi dệt may!")
+ts.Read(message = "Chào mừng bạn đến với hệ thống nhận diện lỗi dệt may!")
+
 state = None
 while state != 'Start':
     state = input("Nhap 'Start' de bat dau!\n")
@@ -33,7 +35,7 @@ while True:
         data = ser.readline().decode().strip()
         if data == "Started":
             break 
-        print(data)
+        # print(data)
     print("123")
     time.sleep(1)
 
@@ -45,7 +47,7 @@ try:
         else:
             continue
         data = data.decode("utf-8").strip()
-        print(data)
+        # print(data)
         if data == "A":
             ser.flushInput()
             # take a sample photo
@@ -82,13 +84,18 @@ try:
                 continue
             # read result
             text = "Kết quả kiểm tra:"
+            error = []
             if len(res_detect):
                 text += "Xuất hiện lỗi "
                 for item in res_detect:
                     text += f'{item}, '
+                    error.append(item)
             else:
                 text += "Vải không xuất hiện lỗi!"
-            ts.Read(text)
+            print(error)
+            print("step 3")
+            # ts.Read(text)
+            Read(error)
             time.sleep(1)
             print("step 4")
             # send data arduino
